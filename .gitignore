@@ -6,7 +6,7 @@ target/
 
 .idea
 *.iml
-
+.attach_pid*
 .metals
 .bloop
 
