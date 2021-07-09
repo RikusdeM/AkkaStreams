@@ -3,7 +3,12 @@ package com.example
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, MediaRanges, StatusCodes}
+import akka.http.scaladsl.model.{
+  HttpRequest,
+  HttpResponse,
+  MediaRanges,
+  StatusCodes
+}
 import akka.http.scaladsl.model.headers.Accept
 import akka.stream.alpakka.csv.scaladsl.{CsvParsing, CsvToMap}
 import akka.stream.scaladsl.{Flow, Sink, Source}
@@ -15,6 +20,9 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.{ StringDeserializer, StringSerializer }
 
 trait Csv extends Json {
 
@@ -29,7 +37,7 @@ trait Csv extends Json {
 
   implicit def toHttpRequest(url: String) = httpRequest(url)
 
-  val jsonFlow = Flow[Map[String,String]].map(toJson)
+  val jsonFlow = Flow[Map[String, String]].map(toJson)
 
   def httpRequestStream(httpRequests: Seq[HttpRequest], parallelism: Int) = {
     Source
@@ -39,23 +47,33 @@ trait Csv extends Json {
       }
       .flatMapConcat(extractEntityData)
       .via(CsvParsing.lineScanner())
-      .via(CsvToMap.toMapAsStrings())
+      .via(CsvToMap.toMap())
+      .map(cleanseCsvData)
       .map(toNasdaq)
-      .map(nasdaqToJson).recover{ throwable =>
-      logger.error(throwable.toString)
-    }
+      .map(nasdaqToJson)
+      .recover { throwable =>
+        logger.error(throwable.toString)
+      }
       .to(Sink.foreach(nasdaq => println(nasdaq.toString)))
   }
 
-  def extractEntityData(httpResponse: HttpResponse):Source[ByteString,_] = {
+  def extractEntityData(httpResponse: HttpResponse): Source[ByteString, _] = {
     httpResponse match {
-      case HttpResponse(OK, _, entity, _)  => {
+      case HttpResponse(OK, _, entity, _) => {
         entity.dataBytes
       }
       case _ =>
         logger.error("Could not retrieve .csv")
         Source.failed(new Exception("Could not retrieve .csv"))
     }
+  }
+
+  def cleanseCsvData(csvData: Map[String, ByteString]): Map[String, String] = {
+    csvData
+      .filterNot({
+        case (key, _) => key.isEmpty
+      })
+      .map(results => (results._1, results._2.utf8String))
   }
 
 }

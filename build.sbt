@@ -23,6 +23,8 @@ libraryDependencies ++= Seq(
   "com.lightbend.akka" %% "akka-stream-alpakka-csv" % AlpakkaVersion,
   "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "org.apache.kafka" % "kafka-clients" % "2.6.0",
+  "org.testcontainers" % "kafka" % "1.14.3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.3",
 
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
