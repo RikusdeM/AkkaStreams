@@ -1,4 +1,4 @@
-name := "streamstest"
+name := "AkkaStreams"
 
 version := "1.0"
 
